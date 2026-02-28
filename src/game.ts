@@ -133,6 +133,11 @@ export class Game {
         this.phase = "playing";
         if (!this.input.isTouch) this.canvas.style.cursor = "none";
       }
+      // Fullscreen button
+      if (!document.fullscreenElement && this.isInsideButton(mx, my, WIDTH / 2, 440, 220, 42)) {
+        this.enterFullscreen();
+        return;
+      }
     } else if (this.phase === "paused") {
       if (this.isInsideButton(mx, my, WIDTH / 2, 320, 180, 50)) {
         this.phase = "playing";
@@ -158,6 +163,19 @@ export class Game {
         return;
       }
       this.checkPowerSlotTap(mx, my);
+    }
+  }
+
+  private enterFullscreen(): void {
+    const el = document.documentElement;
+    if (el.requestFullscreen) {
+      el.requestFullscreen().then(() => {
+        // Try to lock orientation (works on Android, silently fails on iOS)
+        const s = screen.orientation as any;
+        if (s && typeof s.lock === "function") {
+          s.lock("landscape").catch(() => {});
+        }
+      }).catch(() => {});
     }
   }
 
@@ -935,12 +953,21 @@ export class Game {
     ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.font = "16px monospace";
     ctx.fillText("Defend your candy for 60 seconds!", WIDTH / 2, 230);
-    ctx.fillText("Click or press Space to shoot. Arrow keys to aim.", WIDTH / 2, 260);
-    ctx.fillText("Press Escape to pause.", WIDTH / 2, 285);
+    if (this.input.isTouch) {
+      ctx.fillText("Tap to shoot. Tap power slots to activate.", WIDTH / 2, 260);
+    } else {
+      ctx.fillText("Click or press Space to shoot. Arrow keys to aim.", WIDTH / 2, 260);
+      ctx.fillText("Press Escape to pause. Keys 1-6 for powers.", WIDTH / 2, 285);
+    }
     ctx.fillText("If the toys steal all 10 candies, you lose!", WIDTH / 2, 310);
 
     // Play button
     this.renderButton(ctx, WIDTH / 2, 370, 180, 50, "Play", "#50e3c2");
+
+    // Fullscreen button (only if not already fullscreen)
+    if (!document.fullscreenElement) {
+      this.renderButton(ctx, WIDTH / 2, 440, 220, 42, "Fullscreen", "#4a90d9");
+    }
 
     ctx.textAlign = "left";
   }

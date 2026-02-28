@@ -80,6 +80,14 @@ export class Game {
     this.candies = spawnCandies();
 
     this.canvas.addEventListener("click", (e) => this.handleClick(e));
+    this.canvas.addEventListener("touchend", (e) => {
+      // Synthesize a click from touch for overlay buttons and power slots
+      if (e.changedTouches.length > 0) {
+        const touch = e.changedTouches[0];
+        const { mx, my } = this.scaleClickPos(touch);
+        this.handleClickAt(mx, my);
+      }
+    });
   }
 
   private resetGame(): void {
@@ -104,35 +112,70 @@ export class Game {
     this.bombTimer = 5;
   }
 
-  private handleClick(e: MouseEvent): void {
+  private scaleClickPos(e: MouseEvent | Touch): { mx: number; my: number } {
     const rect = this.canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+    const scaleX = WIDTH / rect.width;
+    const scaleY = HEIGHT / rect.height;
+    return {
+      mx: (("clientX" in e ? e.clientX : 0) - rect.left) * scaleX,
+      my: (("clientY" in e ? e.clientY : 0) - rect.top) * scaleY,
+    };
+  }
 
+  private handleClick(e: MouseEvent): void {
+    const { mx, my } = this.scaleClickPos(e);
+    this.handleClickAt(mx, my);
+  }
+
+  private handleClickAt(mx: number, my: number): void {
     if (this.phase === "start") {
-      // Play button
       if (this.isInsideButton(mx, my, WIDTH / 2, 370, 180, 50)) {
         this.phase = "playing";
-        this.canvas.style.cursor = "none";
+        if (!this.input.isTouch) this.canvas.style.cursor = "none";
       }
     } else if (this.phase === "paused") {
-      // Resume button
       if (this.isInsideButton(mx, my, WIDTH / 2, 320, 180, 50)) {
         this.phase = "playing";
-        this.canvas.style.cursor = "none";
+        if (!this.input.isTouch) this.canvas.style.cursor = "none";
       }
-      // Restart button
       if (this.isInsideButton(mx, my, WIDTH / 2, 390, 180, 50)) {
         this.resetGame();
         this.phase = "playing";
-        this.canvas.style.cursor = "none";
+        if (!this.input.isTouch) this.canvas.style.cursor = "none";
       }
     } else if (this.phase === "gameover" || this.phase === "won") {
-      // Play Again button
       if (this.isInsideButton(mx, my, WIDTH / 2, 370, 200, 50)) {
         this.resetGame();
         this.phase = "playing";
-        this.canvas.style.cursor = "none";
+        if (!this.input.isTouch) this.canvas.style.cursor = "none";
+      }
+    } else if (this.phase === "playing") {
+      // Pause button
+      const px = WIDTH / 2 + 50, py = 12, pw = 28, ph = 24;
+      if (mx >= px && mx <= px + pw && my >= py && my <= py + ph) {
+        this.phase = "paused";
+        this.canvas.style.cursor = "default";
+        return;
+      }
+      this.checkPowerSlotTap(mx, my);
+    }
+  }
+
+  private checkPowerSlotTap(mx: number, my: number): void {
+    const slotSize = 44;
+    const padding = 8;
+    const startX = WIDTH - slotSize - 16;
+    const startY = 16;
+
+    for (let i = 0; i < this.powers.slots.length; i++) {
+      const sx = startX;
+      const sy = startY + i * (slotSize + padding);
+      if (mx >= sx && mx <= sx + slotSize && my >= sy && my <= sy + slotSize) {
+        const slot = this.powers.slots[i];
+        if (slot.cooldownRemaining <= 0) {
+          this.powers.tryActivate(slot.key, this.audio);
+        }
+        return; // consumed the tap, don't shoot
       }
     }
   }
@@ -816,8 +859,8 @@ export class Game {
     // Turret + operator toy
     this.renderTurret(ctx);
 
-    // Crosshair at cursor (only when playing)
-    if (this.phase === "playing") {
+    // Crosshair at cursor (only when playing, hidden on touch)
+    if (this.phase === "playing" && !this.input.isTouch) {
       ctx.strokeStyle = "rgba(233,69,96,0.9)";
       ctx.lineWidth = 2.5;
       ctx.beginPath();
@@ -852,6 +895,16 @@ export class Game {
       }
       ctx.fillText(timeStr, WIDTH / 2, 30);
       ctx.textAlign = "left";
+
+      // Pause button (top-center-right)
+      if (this.phase === "playing") {
+        const px = WIDTH / 2 + 50, py = 12, pw = 28, ph = 24;
+        ctx.fillStyle = "rgba(255,255,255,0.15)";
+        ctx.fillRect(px, py, pw, ph);
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fillRect(px + 8, py + 5, 4, 14);
+        ctx.fillRect(px + 16, py + 5, 4, 14);
+      }
     }
 
     // Phase overlays

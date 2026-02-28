@@ -133,11 +133,6 @@ export class Game {
         this.phase = "playing";
         if (!this.input.isTouch) this.canvas.style.cursor = "none";
       }
-      // Fullscreen button
-      if (!document.fullscreenElement && this.isInsideButton(mx, my, WIDTH / 2, 440, 220, 42)) {
-        this.enterFullscreen();
-        return;
-      }
     } else if (this.phase === "paused") {
       if (this.isInsideButton(mx, my, WIDTH / 2, 320, 180, 50)) {
         this.phase = "playing";
@@ -163,19 +158,6 @@ export class Game {
         return;
       }
       this.checkPowerSlotTap(mx, my);
-    }
-  }
-
-  private enterFullscreen(): void {
-    const el = document.documentElement;
-    if (el.requestFullscreen) {
-      el.requestFullscreen().then(() => {
-        // Try to lock orientation (works on Android, silently fails on iOS)
-        const s = screen.orientation as any;
-        if (s && typeof s.lock === "function") {
-          s.lock("landscape").catch(() => {});
-        }
-      }).catch(() => {});
     }
   }
 
@@ -963,11 +945,6 @@ export class Game {
 
     // Play button
     this.renderButton(ctx, WIDTH / 2, 370, 180, 50, "Play", "#50e3c2");
-
-    // Fullscreen button (only if not already fullscreen)
-    if (!document.fullscreenElement) {
-      this.renderButton(ctx, WIDTH / 2, 440, 220, 42, "Fullscreen", "#4a90d9");
-    }
 
     ctx.textAlign = "left";
   }

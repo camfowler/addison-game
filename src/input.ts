@@ -108,6 +108,12 @@ export class Input {
     this.keysJustPressed.add(code);
   }
 
+  /** Clear mouse/touch press state so the tap doesn't also fire a shot */
+  consumeClick(): void {
+    this.mouseButtonsJustPressed.clear();
+    this.mouseButtons.clear();
+  }
+
   /** Call at the end of each frame to clear one-shot state. */
   endFrame(): void {
     this.keysJustPressed.clear();

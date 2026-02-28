@@ -169,6 +169,7 @@ export class Game {
       if (mx >= px && mx <= px + pw && my >= py && my <= py + ph) {
         this.phase = "paused";
         this.canvas.style.cursor = "default";
+        this.input.consumeClick();
         return;
       }
       this.checkPowerSlotTap(mx, my);
@@ -189,7 +190,8 @@ export class Game {
         if (slot.cooldownRemaining <= 0) {
           this.powers.tryActivate(slot.key, this.audio);
         }
-        return; // consumed the tap, don't shoot
+        this.input.consumeClick(); // don't also shoot
+        return;
       }
     }
   }

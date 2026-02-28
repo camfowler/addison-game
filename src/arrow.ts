@@ -4,6 +4,7 @@ import { Balloon } from "./balloon";
 const GRAVITY = 300;
 const SEEKER_SPEED = 180;
 const SEEKER_TURN_RATE = 4.0; // radians/sec
+const SEEKER_DECEL = 300; // px/s² deceleration toward seeker speed
 
 export class Arrow {
   x: number;
@@ -70,10 +71,7 @@ export class Arrow {
       if (dist < 25 || dist > this.seekerClosestDist + 5) {
         this.seekerPending = false;
         this.isSeeker = true;
-        // Set velocity to seeker speed in current direction
-        const angle = Math.atan2(this.vy, this.vx);
-        this.vx = Math.cos(angle) * SEEKER_SPEED;
-        this.vy = Math.sin(angle) * SEEKER_SPEED;
+        // Keep current velocity — updateSeeker will gradually slow it down
       }
       this.seekerClosestDist = Math.min(this.seekerClosestDist, dist);
     }
@@ -131,24 +129,30 @@ export class Arrow {
       }
     }
 
+    // Gradually decelerate to seeker speed
+    const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    const newSpeed = currentSpeed > SEEKER_SPEED
+      ? Math.max(SEEKER_SPEED, currentSpeed - SEEKER_DECEL * dt)
+      : SEEKER_SPEED;
+
+    const currentAngle = Math.atan2(this.vy, this.vx);
+
     if (closest) {
-      // Current heading
-      const currentAngle = Math.atan2(this.vy, this.vx);
-      // Desired heading toward target
       const desiredAngle = Math.atan2(closest.y - this.y, closest.x - this.x);
 
-      // Compute shortest angular difference
       let diff = desiredAngle - currentAngle;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
 
-      // Clamp turn rate
       const maxTurn = SEEKER_TURN_RATE * dt;
       const turn = Math.max(-maxTurn, Math.min(maxTurn, diff));
       const newAngle = currentAngle + turn;
 
-      this.vx = Math.cos(newAngle) * SEEKER_SPEED;
-      this.vy = Math.sin(newAngle) * SEEKER_SPEED;
+      this.vx = Math.cos(newAngle) * newSpeed;
+      this.vy = Math.sin(newAngle) * newSpeed;
+    } else {
+      this.vx = Math.cos(currentAngle) * newSpeed;
+      this.vy = Math.sin(currentAngle) * newSpeed;
     }
 
     this.x += this.vx * dt;

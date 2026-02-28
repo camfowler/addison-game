@@ -12,6 +12,8 @@ export interface PowerState {
   flameArrowReady: boolean;
   rapidFireTimer: number;
   seekerRemaining: number;
+  clusterReady: boolean;
+  freezeActive: boolean;
 }
 
 export class Powers {
@@ -21,14 +23,18 @@ export class Powers {
     flameArrowReady: false,
     rapidFireTimer: 0,
     seekerRemaining: 0,
+    clusterReady: false,
+    freezeActive: false,
   };
 
   constructor() {
     this.slots = [
-      { name: "Speedy", key: "Digit1", cooldown: 0, cooldownRemaining: 0 },
+      { name: "Speedy", key: "Digit1", cooldown: 15, cooldownRemaining: 0 },
       { name: "Flame", key: "Digit2", cooldown: 20, cooldownRemaining: 0 },
       { name: "Rapid", key: "Digit3", cooldown: 25, cooldownRemaining: 0 },
-      { name: "Seeker", key: "Digit4", cooldown: 0, cooldownRemaining: 0 },
+      { name: "Seeker", key: "Digit4", cooldown: 15, cooldownRemaining: 0 },
+      { name: "Cluster", key: "Digit5", cooldown: 20, cooldownRemaining: 0 },
+      { name: "Freeze", key: "Digit6", cooldown: 25, cooldownRemaining: 0 },
     ];
   }
 
@@ -62,6 +68,12 @@ export class Powers {
           break;
         case "Seeker":
           this.state.seekerRemaining = 10;
+          break;
+        case "Cluster":
+          this.state.clusterReady = true;
+          break;
+        case "Freeze":
+          this.state.freezeActive = true;
           break;
       }
       return true;

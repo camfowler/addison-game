@@ -23,7 +23,14 @@ export class Arrow {
   private seekerClosestDist = Infinity;
   flameAccum = 0;
 
-  constructor(startX: number, startY: number, targetX: number, targetY: number, opts: { speedy?: boolean; flaming?: boolean; seeker?: boolean } = {}) {
+  isCluster: boolean;
+  isClusterChild = false;
+  private clusterTargetX = 0;
+  private clusterTargetY = 0;
+  private clusterClosestDist = Infinity;
+  clusterExploded = false;
+
+  constructor(startX: number, startY: number, targetX: number, targetY: number, opts: { speedy?: boolean; flaming?: boolean; seeker?: boolean; cluster?: boolean; clusterChild?: boolean } = {}) {
     this.x = startX;
     this.y = startY;
     this.isSpeedy = opts.speedy ?? false;
@@ -31,9 +38,17 @@ export class Arrow {
     this.isSeeker = false;
     this.seekerPending = opts.seeker ?? false;
 
+    this.isCluster = opts.cluster ?? false;
+    this.isClusterChild = opts.clusterChild ?? false;
+
     if (this.seekerPending) {
       this.seekerTargetX = targetX;
       this.seekerTargetY = targetY;
+    }
+
+    if (this.isCluster) {
+      this.clusterTargetX = targetX;
+      this.clusterTargetY = targetY;
     }
 
     // All arrows launch with normal arc physics
@@ -43,7 +58,7 @@ export class Arrow {
     let T = 0.8 + (dist / Math.max(WIDTH, HEIGHT)) * 0.4;
 
     if (this.isSpeedy) {
-      T = T / 3;
+      T = 0.25; // fixed fast flight time regardless of distance
     }
 
     this.vx = dx / T;
@@ -62,6 +77,18 @@ export class Arrow {
   }
 
   update(dt: number, balloons?: Balloon[]): void {
+    // Check if cluster arrow has reached its detonation point
+    if (this.isCluster && !this.clusterExploded) {
+      const dx = this.clusterTargetX - this.x;
+      const dy = this.clusterTargetY - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 30 || dist > this.clusterClosestDist + 5) {
+        this.clusterExploded = true;
+        this.alive = false; // parent arrow dies, game.ts spawns children
+      }
+      this.clusterClosestDist = Math.min(this.clusterClosestDist, dist);
+    }
+
     // Check if pending seeker has reached its activation point
     if (this.seekerPending) {
       const dx = this.seekerTargetX - this.x;
@@ -172,20 +199,36 @@ export class Arrow {
       ctx.globalAlpha = 1;
     }
 
+    // Cluster glow
+    if (this.isCluster) {
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = "#ffaa44";
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(angle);
 
-    // Shaft — longer, brown, wooden (blue tint only for active seekers)
-    ctx.strokeStyle = (this.isSeeker || this.seekerPending || this.seekerSpent) ? "#5599bb" : "#8B6914";
+    const scale = this.isCluster ? 1.6 : this.isClusterChild ? 0.7 : 1;
+    ctx.scale(scale, scale);
+
+    // Shaft — longer, brown, wooden (blue tint for seekers, orange for cluster)
+    ctx.strokeStyle = (this.isSeeker || this.seekerPending || this.seekerSpent) ? "#5599bb"
+      : this.isCluster ? "#cc6600"
+      : this.isClusterChild ? "#dd8833"
+      : "#8B6914";
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(-28, 0);
     ctx.lineTo(6, 0);
     ctx.stroke();
 
-    // Arrowhead — dark iron, sharper
-    ctx.fillStyle = "#555";
+    // Arrowhead — dark iron, sharper (orange-red for cluster)
+    ctx.fillStyle = this.isCluster || this.isClusterChild ? "#e05020" : "#555";
     ctx.beginPath();
     ctx.moveTo(10, 0);
     ctx.lineTo(-1, -3);
@@ -194,7 +237,7 @@ export class Arrow {
     ctx.fill();
 
     // Fletching — 3 angled feathers at tail
-    ctx.strokeStyle = "#c4a35a";
+    ctx.strokeStyle = this.isCluster || this.isClusterChild ? "#ffcc66" : "#c4a35a";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(-24, 0);

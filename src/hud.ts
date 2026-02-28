@@ -5,41 +5,59 @@ export class HUD {
   render(
     ctx: CanvasRenderingContext2D,
     score: number,
-    missed: number,
+    candiesRemaining: number,
+    candiesStolen: number,
     powers: PowerSlot[],
     powerState: PowerState,
   ): void {
-    // Score
+    // Candy counter — main objective display
     ctx.fillStyle = "#fff";
-    ctx.font = "bold 22px monospace";
+    ctx.font = "bold 18px monospace";
     ctx.textAlign = "left";
-    ctx.fillText(`Score: ${score}`, 16, 32);
+    ctx.fillText(`Candy: ${candiesRemaining}/10`, 16, 28);
 
-    // Missed
-    ctx.fillStyle = "#e94560";
-    ctx.font = "16px monospace";
-    ctx.fillText(`Missed: ${missed}`, 16, 56);
+    // Stolen indicator
+    if (candiesStolen > 0) {
+      ctx.fillStyle = "#e94560";
+      ctx.font = "14px monospace";
+      ctx.fillText(`Stolen: ${candiesStolen}`, 16, 48);
+    }
+
+    // Score (smaller)
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = "13px monospace";
+    ctx.fillText(`Score: ${score}`, 16, 68);
 
     // Active power indicators
+    let iy = 88;
     if (powerState.speedyRemaining > 0) {
       ctx.fillStyle = "#aad4ff";
       ctx.font = "14px monospace";
-      ctx.fillText(`Speedy: ${powerState.speedyRemaining} arrows`, 16, 78);
+      ctx.fillText(`Speedy: ${powerState.speedyRemaining} arrows`, 16, iy);
+      iy += 18;
     }
     if (powerState.flameArrowReady) {
       ctx.fillStyle = "#ff8c00";
       ctx.font = "14px monospace";
-      ctx.fillText(`Flame arrow ready!`, 16, 96);
+      ctx.fillText(`Flame arrow ready!`, 16, iy);
+      iy += 18;
     }
     if (powerState.rapidFireTimer > 0) {
       ctx.fillStyle = "#ff5555";
       ctx.font = "14px monospace";
-      ctx.fillText(`Rapid: ${powerState.rapidFireTimer.toFixed(1)}s`, 16, 114);
+      ctx.fillText(`Rapid: ${powerState.rapidFireTimer.toFixed(1)}s`, 16, iy);
+      iy += 18;
     }
     if (powerState.seekerRemaining > 0) {
       ctx.fillStyle = "#88ddff";
       ctx.font = "14px monospace";
-      ctx.fillText(`Seeker: ${powerState.seekerRemaining} arrows`, 16, 132);
+      ctx.fillText(`Seeker: ${powerState.seekerRemaining} arrows`, 16, iy);
+      iy += 20;
+    }
+    if (powerState.clusterReady) {
+      ctx.fillStyle = "#ffaa44";
+      ctx.font = "14px monospace";
+      ctx.fillText("Cluster: READY", 16, iy);
     }
 
     // Power slots — top-right column

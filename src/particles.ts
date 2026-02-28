@@ -72,7 +72,7 @@ export class FlamePoint {
   x: number;
   y: number;
   life: number;
-  maxLife = 5.0;
+  maxLife = 10.0;
   alive = true;
   radius = 12;
   flickerPhase: number;

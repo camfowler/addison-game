@@ -1,40 +1,28 @@
-import { Balloon } from "./balloon";
-import { WIDTH, HEIGHT } from "./game";
+import { SoftToy } from "./softToy";
 
 export class Spawner {
   private timer = 0;
   private interval = 2.0;
-  private elapsed = 0;
+  private initialized = false;
 
-  update(dt: number, balloons: Balloon[]): void {
-    this.elapsed += dt;
+  update(dt: number, toys: SoftToy[]): void {
+    // Initial batch
+    if (!this.initialized) {
+      this.initialized = true;
+      const count = Math.min(SoftToy.maxToys(), 8);
+      for (let i = 0; i < count; i++) {
+        toys.push(new SoftToy());
+      }
+      this.timer = this.interval;
+      return;
+    }
+
     this.timer -= dt;
 
-    if (this.timer <= 0) {
-      this.spawn(balloons);
-      const ramp = Math.max(0.6, 1.0 - this.elapsed * 0.005);
-      this.interval = (1.5 + Math.random()) * ramp;
+    if (this.timer <= 0 && toys.length < SoftToy.maxToys()) {
+      toys.push(new SoftToy());
+      this.interval = 3.0 + Math.random() * 2;
       this.timer = this.interval;
-    }
-  }
-
-  private spawn(balloons: Balloon[]): void {
-    const margin = 40;
-    const y = HEIGHT + 30;
-
-    // 20% chance of triple (3 nearby individual balloons)
-    if (Math.random() < 0.2) {
-      const cx = margin + Math.random() * (WIDTH - margin * 2);
-      for (let i = 0; i < 3; i++) {
-        const ox = (Math.random() - 0.5) * 30;
-        const oy = (Math.random() - 0.5) * 20;
-        const isWater = Math.random() < 0.15;
-        balloons.push(new Balloon(cx + ox, y + oy, isWater));
-      }
-    } else {
-      const x = margin + Math.random() * (WIDTH - margin * 2);
-      const isWater = Math.random() < 0.15;
-      balloons.push(new Balloon(x, y, isWater));
     }
   }
 }

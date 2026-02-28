@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Balloon -->
+  <ellipse cx="32" cy="24" rx="18" ry="22" fill="#e94560"/>
+  <ellipse cx="26" cy="16" rx="5" ry="7" fill="rgba(255,255,255,0.3)" transform="rotate(-15 26 16)"/>
+  <!-- Knot -->
+  <polygon points="29,46 35,46 32,51" fill="#e94560"/>
+  <!-- String -->
+  <path d="M32 51 Q34 55 30 58 Q34 61 32 64" stroke="#ccc" stroke-width="1.5" fill="none"/>
+  <!-- Candy on string -->
+  <circle cx="32" cy="58" r="5" fill="#f5a623"/>
+  <rect x="30" y="56" width="4" height="4" rx="1" fill="#fff" opacity="0.4"/>
+  <!-- Arrow crossing -->
+  <line x1="8" y1="40" x2="56" y2="12" stroke="#8B6914" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="58,11 52,8 53,14" fill="#555"/>
+  <!-- Fletching -->
+  <line x1="10" y1="39" x2="6" y2="35" stroke="#c4a35a" stroke-width="1.5"/>
+  <line x1="10" y1="39" x2="6" y2="43" stroke="#c4a35a" stroke-width="1.5"/>
+</svg>

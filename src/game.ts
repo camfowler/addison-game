@@ -6,16 +6,16 @@ import { Particle, spawnPopParticles, spawnSplashParticles, FlamePoint, WaterDro
 import { Spawner } from "./spawner";
 import { SoftToy, renderPumpStation } from "./softToy";
 import { Candy, spawnCandies } from "./candy";
-import { renderBackdrop } from "./backdrop";
+import { renderBackdrop, invalidateBackdrop } from "./backdrop";
 import { Powers } from "./powers";
 import { HUD } from "./hud";
 import { Bomb, LavaDrop } from "./bomb";
 
-export const WIDTH = 800;
-export const HEIGHT = 600;
+export let WIDTH = 800;
+export let HEIGHT = 600;
 
-const TURRET_X = WIDTH - 100;
-const TURRET_Y = HEIGHT * 0.8;
+function getTurretX(): number { return WIDTH - 100; }
+function getTurretY(): number { return HEIGHT * 0.8; }
 const CURSOR_SPEED = 400;
 const FLAME_DROP_INTERVAL = 8;
 
@@ -71,9 +71,7 @@ export class Game {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.canvas.width = WIDTH;
-    this.canvas.height = HEIGHT;
-
+    this.resizeCanvas();
     this.ctx = canvas.getContext("2d")!;
     this.input = new Input(canvas);
     this.audio = new Audio();
@@ -88,6 +86,22 @@ export class Game {
         this.handleClickAt(mx, my);
       }
     });
+
+    window.addEventListener("resize", () => this.resizeCanvas());
+  }
+
+  private resizeCanvas(): void {
+    const isMobile = window.innerWidth <= 900;
+    if (isMobile) {
+      // Match canvas aspect ratio to screen, keeping HEIGHT fixed at 600
+      const aspect = window.innerWidth / window.innerHeight;
+      WIDTH = Math.round(HEIGHT * aspect);
+    } else {
+      WIDTH = 800;
+    }
+    this.canvas.width = WIDTH;
+    this.canvas.height = HEIGHT;
+    invalidateBackdrop();
   }
 
   private resetGame(): void {
@@ -603,7 +617,7 @@ export class Game {
         ps.clusterReady = false;
       }
 
-      this.arrows.push(new Arrow(TURRET_X, TURRET_Y, tx, ty, { speedy: isSpeedy, flaming: isFlaming, seeker: isSeeker, cluster: isCluster }));
+      this.arrows.push(new Arrow(getTurretX(), getTurretY(), tx, ty, { speedy: isSpeedy, flaming: isFlaming, seeker: isSeeker, cluster: isCluster }));
       this.audio.playShoot();
       if (isFlaming) {
         this.audio.playFlame();
@@ -666,8 +680,8 @@ export class Game {
   private turretAngle = -Math.PI / 2; // current turret aim angle
 
   private renderTurret(ctx: CanvasRenderingContext2D): void {
-    const tx = TURRET_X;
-    const ty = TURRET_Y;
+    const tx = getTurretX();
+    const ty = getTurretY();
 
     // Calculate aim angle toward cursor
     const aimAngle = Math.atan2(this.cursorY - ty, this.cursorX - tx);

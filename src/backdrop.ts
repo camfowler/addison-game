@@ -3,6 +3,10 @@ import { WIDTH, HEIGHT } from "./game";
 /** Cached backdrop canvas — drawn once, then blitted each frame */
 let cached: HTMLCanvasElement | null = null;
 
+export function invalidateBackdrop(): void {
+  cached = null;
+}
+
 export function renderBackdrop(ctx: CanvasRenderingContext2D): void {
   if (!cached) {
     cached = document.createElement("canvas");

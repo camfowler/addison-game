@@ -176,6 +176,24 @@ export class Game {
     }
   }
 
+  private isTapOnUI(mx: number, my: number): boolean {
+    // Pause button
+    const px = WIDTH / 2 + 50, py = 12, pw = 28, ph = 24;
+    if (mx >= px && mx <= px + pw && my >= py && my <= py + ph) return true;
+
+    // Power slots
+    const slotSize = 44;
+    const padding = 8;
+    const startX = WIDTH - slotSize - 16;
+    const startY = 16;
+    for (let i = 0; i < this.powers.slots.length; i++) {
+      const sx = startX;
+      const sy = startY + i * (slotSize + padding);
+      if (mx >= sx && mx <= sx + slotSize && my >= sy && my <= sy + slotSize) return true;
+    }
+    return false;
+  }
+
   private checkPowerSlotTap(mx: number, my: number): void {
     const slotSize = 44;
     const padding = 8;
@@ -439,7 +457,7 @@ export class Game {
               if (b.immuneTimer > 0) continue;
               // Newly spawned children near the explosion
               if (b.alive && Math.abs(b.x - balloon.x) < 40 && Math.abs(b.y - balloon.y) < 40 && b !== balloon) {
-                b.immuneTimer = 2;
+                b.immuneTimer = 1;
                 arrow.hitSet.add(b);
               }
             }
@@ -584,9 +602,10 @@ export class Game {
       this.rapidReloadTimer = Math.max(0, this.rapidReloadTimer - dt);
     }
 
-    const wantsToShoot = isRapid
+    const wantsToShoot = (isRapid
       ? this.input.isMouseDown() || this.input.isKeyDown("Space")
-      : this.input.isMouseJustPressed() || this.input.isKeyJustPressed("Space");
+      : this.input.isMouseJustPressed() || this.input.isKeyJustPressed("Space"))
+      && !this.isTapOnUI(this.cursorX, this.cursorY);
 
     const canShoot = isRapid ? this.rapidReloadTimer <= 0 : true;
 

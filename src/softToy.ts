@@ -185,9 +185,8 @@ export class SoftToy {
       this.state = "walking_to_launch";
       this.stateTimer = 0;
       this.squish = 0.1;
-      // Pick a launch point ahead
-      this.launchX = this.x + 50 + Math.random() * 100;
-      this.launchX = Math.min(this.launchX, WIDTH - 120);
+      // Pick a random launch point spread across the map
+      this.launchX = 100 + Math.random() * (WIDTH - 300);
     }
     return null;
   }

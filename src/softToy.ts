@@ -4,7 +4,9 @@ import { Candy } from "./candy";
 
 const PUMP_DURATION = 1.5;
 const TOY_H = 32;
-const MAX_TOYS = 12;
+let MAX_TOYS = 12;
+
+export function setMaxToys(n: number): void { MAX_TOYS = n; }
 
 type ToyState = "filling" | "walking_to_candy" | "picking_up" | "walking_to_launch" | "launching" | "watching" | "celebrating" | "surprised" | "returning";
 type AnimalType = "bear" | "bunny" | "cat" | "penguin" | "frog" | "elephant";

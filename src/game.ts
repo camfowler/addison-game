@@ -4,7 +4,7 @@ import { Balloon } from "./balloon";
 import { Arrow } from "./arrow";
 import { Particle, spawnPopParticles, spawnSplashParticles, FlamePoint, WaterDrop, SmokeTrail } from "./particles";
 import { Spawner } from "./spawner";
-import { SoftToy, renderPumpStation } from "./softToy";
+import { SoftToy, renderPumpStation, setMaxToys } from "./softToy";
 import { Candy, spawnCandies } from "./candy";
 import { renderBackdrop, invalidateBackdrop } from "./backdrop";
 import { Powers } from "./powers";
@@ -34,7 +34,25 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 type GamePhase = "start" | "playing" | "paused" | "gameover" | "won";
+type Difficulty = "easy" | "medium" | "hard" | "extra_hard";
 const GAME_DURATION = 60; // 60 seconds
+
+interface DifficultyConfig {
+  label: string;
+  color: string;
+  initialToys: number;
+  maxToys: number;
+  spawnMin: number;
+  spawnMax: number;
+  hasWall: boolean;
+}
+
+const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
+  easy:       { label: "Easy",       color: "#50e3c2", initialToys: 4,  maxToys: 6,  spawnMin: 4.0, spawnMax: 6.0, hasWall: false },
+  medium:     { label: "Medium",     color: "#f5a623", initialToys: 8,  maxToys: 12, spawnMin: 3.0, spawnMax: 5.0, hasWall: false },
+  hard:       { label: "Hard",       color: "#e94560", initialToys: 10, maxToys: 16, spawnMin: 2.0, spawnMax: 3.5, hasWall: false },
+  extra_hard: { label: "Extra Hard", color: "#bd10e0", initialToys: 10, maxToys: 16, spawnMin: 2.0, spawnMax: 3.5, hasWall: true },
+};
 
 export class Game {
   canvas: HTMLCanvasElement;
@@ -68,6 +86,9 @@ export class Game {
   private cursorX = WIDTH / 2;
   private cursorY = HEIGHT / 2;
   private gameTimer = GAME_DURATION;
+
+  private difficulty: Difficulty = "medium";
+  private difficultyConfig: DifficultyConfig = DIFFICULTY_CONFIGS["medium"];
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -114,7 +135,9 @@ export class Game {
     this.arrowTrailMap.clear();
     this.softToys = [];
     this.candies = spawnCandies();
-    this.spawner = new Spawner();
+    const cfg = this.difficultyConfig;
+    setMaxToys(cfg.maxToys);
+    this.spawner = new Spawner(cfg.initialToys, cfg.spawnMin, cfg.spawnMax);
     this.powers = new Powers();
     this.score = 0;
     this.missed = 0;
@@ -141,11 +164,31 @@ export class Game {
     this.handleClickAt(mx, my);
   }
 
+  private selectDifficulty(d: Difficulty): void {
+    this.difficulty = d;
+    this.difficultyConfig = DIFFICULTY_CONFIGS[d];
+    this.resetGame();
+    this.phase = "playing";
+    if (!this.input.isTouch) this.canvas.style.cursor = "none";
+  }
+
+  private getWallX(): number { return getTurretX() - 180; }
+  private getWallTop(): number { return HEIGHT / 2; }
+  private getWallWidth(): number { return 14; }
+
   private handleClickAt(mx: number, my: number): void {
     if (this.phase === "start") {
-      if (this.isInsideButton(mx, my, WIDTH / 2, 370, 180, 50)) {
-        this.phase = "playing";
-        if (!this.input.isTouch) this.canvas.style.cursor = "none";
+      const difficulties: Difficulty[] = ["easy", "medium", "hard", "extra_hard"];
+      const btnW = 170;
+      const btnH = 42;
+      const startY = 340;
+      const gap = 52;
+      for (let i = 0; i < difficulties.length; i++) {
+        const by = startY + i * gap;
+        if (this.isInsideButton(mx, my, WIDTH / 2, by, btnW, btnH)) {
+          this.selectDifficulty(difficulties[i]);
+          return;
+        }
       }
     } else if (this.phase === "paused") {
       if (this.isInsideButton(mx, my, WIDTH / 2, 320, 180, 50)) {
@@ -159,9 +202,8 @@ export class Game {
       }
     } else if (this.phase === "gameover" || this.phase === "won") {
       if (this.isInsideButton(mx, my, WIDTH / 2, 370, 200, 50)) {
-        this.resetGame();
-        this.phase = "playing";
-        if (!this.input.isTouch) this.canvas.style.cursor = "none";
+        this.phase = "start";
+        this.canvas.style.cursor = "default";
       }
     } else if (this.phase === "playing") {
       // Pause button
@@ -397,6 +439,23 @@ export class Game {
       }
     }
     this.arrows.push(...clusterChildren);
+
+    // --- Wall collision (extra hard mode) ---
+    if (this.difficultyConfig.hasWall) {
+      const wx = this.getWallX();
+      const wTop = this.getWallTop();
+      const ww = this.getWallWidth();
+      const wBottom = HEIGHT - 18;
+      for (const a of this.arrows) {
+        if (!a.alive) continue;
+        const tx = a.tipX;
+        const ty = a.tipY;
+        if (tx >= wx && tx <= wx + ww && ty >= wTop && ty <= wBottom) {
+          a.alive = false;
+          this.particles.push(...spawnPopParticles(tx, ty, "#888"));
+        }
+      }
+    }
 
     // Mark trails as done for dead arrows
     this.arrows = this.arrows.filter((a) => {
@@ -698,6 +757,52 @@ export class Game {
     }
   }
 
+  private renderWall(ctx: CanvasRenderingContext2D): void {
+    const wx = this.getWallX();
+    const wTop = this.getWallTop();
+    const ww = this.getWallWidth();
+    const wBottom = HEIGHT - 18; // ground level
+    const wallH = wBottom - wTop;
+
+    // Stone wall with brick pattern
+    const wallGrad = ctx.createLinearGradient(wx, wTop, wx + ww, wTop);
+    wallGrad.addColorStop(0, "#6a6a6a");
+    wallGrad.addColorStop(0.3, "#808080");
+    wallGrad.addColorStop(0.7, "#787878");
+    wallGrad.addColorStop(1, "#5a5a5a");
+    ctx.fillStyle = wallGrad;
+    roundRect(ctx, wx, wTop, ww, wallH, 2);
+    ctx.fill();
+
+    // Brick lines
+    ctx.strokeStyle = "rgba(0,0,0,0.2)";
+    ctx.lineWidth = 0.8;
+    const brickH = 12;
+    for (let row = 0; row < Math.ceil(wallH / brickH); row++) {
+      const by = wTop + row * brickH;
+      if (by > wBottom) break;
+      ctx.beginPath();
+      ctx.moveTo(wx, by);
+      ctx.lineTo(wx + ww, by);
+      ctx.stroke();
+      // Offset vertical line every other row
+      const offsetX = row % 2 === 0 ? wx + ww / 2 : wx + ww / 3;
+      ctx.beginPath();
+      ctx.moveTo(offsetX, by);
+      ctx.lineTo(offsetX, Math.min(by + brickH, wBottom));
+      ctx.stroke();
+    }
+
+    // Top cap
+    ctx.fillStyle = "#555";
+    roundRect(ctx, wx - 2, wTop - 4, ww + 4, 6, 2);
+    ctx.fill();
+
+    // Highlight edge
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.fillRect(wx, wTop, 3, wallH);
+  }
+
   private turretAngle = -Math.PI / 2; // current turret aim angle
 
   private renderTurret(ctx: CanvasRenderingContext2D): void {
@@ -891,6 +996,11 @@ export class Game {
     for (const bomb of this.bombs) bomb.render(ctx);
     for (const lava of this.lavaDrops) lava.render(ctx);
 
+    // Wall (extra hard mode)
+    if (this.difficultyConfig.hasWall) {
+      this.renderWall(ctx);
+    }
+
     // Turret + operator toy
     this.renderTurret(ctx);
 
@@ -964,22 +1074,35 @@ export class Game {
     // Title
     ctx.fillStyle = "#f5a623";
     ctx.font = "bold 42px monospace";
-    ctx.fillText("Candy Defense!", WIDTH / 2, 180);
+    ctx.fillText("Candy Defense!", WIDTH / 2, 140);
 
     // Subtitle
     ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.font = "16px monospace";
-    ctx.fillText("Defend your candy for 60 seconds!", WIDTH / 2, 230);
+    ctx.fillText("Defend your candy for 60 seconds!", WIDTH / 2, 185);
     if (this.input.isTouch) {
-      ctx.fillText("Tap to shoot. Tap power slots to activate.", WIDTH / 2, 260);
+      ctx.fillText("Tap to shoot. Tap power slots to activate.", WIDTH / 2, 210);
     } else {
-      ctx.fillText("Click or press Space to shoot. Arrow keys to aim.", WIDTH / 2, 260);
-      ctx.fillText("Press Escape to pause. Keys 1-6 for powers.", WIDTH / 2, 285);
+      ctx.fillText("Click or press Space to shoot. Arrow keys to aim.", WIDTH / 2, 210);
+      ctx.fillText("Press Escape to pause. Keys 1-6 for powers.", WIDTH / 2, 235);
     }
-    ctx.fillText("If the toys steal all 10 candies, you lose!", WIDTH / 2, 310);
 
-    // Play button
-    this.renderButton(ctx, WIDTH / 2, 370, 180, 50, "Play", "#50e3c2");
+    // Difficulty label
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = "bold 18px monospace";
+    ctx.fillText("Choose Difficulty", WIDTH / 2, 310);
+
+    // Difficulty buttons
+    const difficulties: Difficulty[] = ["easy", "medium", "hard", "extra_hard"];
+    const btnW = 170;
+    const btnH = 42;
+    const startY = 340;
+    const gap = 52;
+    for (let i = 0; i < difficulties.length; i++) {
+      const cfg = DIFFICULTY_CONFIGS[difficulties[i]];
+      const by = startY + i * gap;
+      this.renderButton(ctx, WIDTH / 2, by, btnW, btnH, cfg.label, cfg.color);
+    }
 
     ctx.textAlign = "left";
   }
